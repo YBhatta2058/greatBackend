@@ -1,0 +1,15 @@
+{
+  "name": "greatproject",
+  "version": "1.0.0",
+  "description": "A star project for my resume",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "Javscript",
+    "backend"
+  ],
+  "author": "Yogesh Bhatta",
+  "license": "ISC"
+}
