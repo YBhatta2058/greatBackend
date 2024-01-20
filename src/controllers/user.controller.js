@@ -6,6 +6,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
 import mongoose from "mongoose";
 
+//It generates a new access token and refresh token. Both are returned. Additinoally refresh token is saved in the database
 const generateAccessAndRefreshTokens = async (userId)=>{
     try{
         const user = await User.findById(userId)
@@ -20,6 +21,8 @@ const generateAccessAndRefreshTokens = async (userId)=>{
         throw new ApiError(500,"Something went wrong while generating refresh and access token")
     }
 }
+
+//Controllers starts from here
 
 const registerUser = asyncHandler(async (req,res)=>{
     const { fullName,email,username,password } = req.body;
@@ -145,8 +148,8 @@ const logoutUser = asyncHandler(async (req,res)=>{
     await User.findByIdAndUpdate(
         req.user._id,
         {
-            $set: {
-                refreshToken: undefined
+            $unset: {
+                refreshToken: 1 // removes the field from document
             }
         },
         {
@@ -229,7 +232,6 @@ const changeCurrentPassword = asyncHandler(async (req,res)=>{
 
 const getCurrentUser = asyncHandler(async (req,res)=>{
     const currentUser = req.user
-    console.log(currentUser)
     if(!currentUser){
         throw new ApiError(401,"No Logged in user")
     }
@@ -256,7 +258,6 @@ const updateAccountDetails = asyncHandler(async (req,res)=>{
 })
 
 const updateUserAvatar = asyncHandler(async (req,res)=>{
-    console.log(req)
     const avatarLocalPath = req.file?.path;
 
     if(!avatarLocalPath){
@@ -334,7 +335,7 @@ const getUserChannelProfile = asyncHandler(async (req,res)=>{
     // An array is returned by aggregate
     const channel = await User.aggregate([{
         $match: {
-            username: username?.toLowerCase()
+            username: username
         }
     },
     {
@@ -350,7 +351,7 @@ const getUserChannelProfile = asyncHandler(async (req,res)=>{
             from: "subscriptions",
             localField: "_id",
             foreignField: "subscriber",
-            as: "subscibedTo"
+            as: "subscribedTo"
         }
     },
     {
@@ -394,13 +395,11 @@ const getUserChannelProfile = asyncHandler(async (req,res)=>{
 
 })
 
-
-
 const getWatchHistory = asyncHandler(async (req,res)=>{
-    const user = User.aggregate([
+    const user = await User.aggregate([
         {
             $match: {
-                _id: new mongoose.Types.ObjectId(req.user?._id)
+                _id: new mongoose.Types.ObjectId(req.user._id)
             }
         },
         {
@@ -430,7 +429,7 @@ const getWatchHistory = asyncHandler(async (req,res)=>{
                     {
                         $addFields: {
                             owner: {
-                                $first: "$owner"
+                                $first: "$owner" // This is added in the watch history array
                             }
                         }
                     }
@@ -438,10 +437,6 @@ const getWatchHistory = asyncHandler(async (req,res)=>{
             }
         }
     ])
-
-    if(!user){
-        throw new ApiError(404,"No Watch History found")
-    }
 
     return res
     .status(200)
