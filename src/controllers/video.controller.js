@@ -1,14 +1,13 @@
-import mongoose, { trusted } from "mongoose";
-import { User } from "../models/user.model.js";
+import mongoose, { isValidObjectId, trusted } from "mongoose";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { Video } from "../models/video.model.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { deleteImageFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 
 
 const getAllVideos = asyncHandler(async (req,res)=>{
-    const { page = 1 , limit = 1, query, sortBy , sortType , userId} = req.query
+    const { page = 1 , limit = 1, query, sortBy , sortType = 'ascending' , userId} = req.query
     const videos = await Video.aggregate([
         {
             $match: {
@@ -43,8 +42,17 @@ const publishVideo = asyncHandler(async(req,res)=>{
         throw new ApiError(404,"Title not found")
     }
     console.log(req.files)
-    const thumbnailPath = req.files.thumbnail[0].path
-    const videoPath = req.files.video[0].path
+    if(!req.files || !(Array.isArray(req.files.thumbnail)) || req.files.thumbnail.length <= 0){
+        throw new ApiError(411,"Missing thumbnail file")
+    }
+    if(!req.files || !(Array.isArray(req.files.video)) || req.files.video.length <= 0){
+        throw new ApiError(411,"Missing video file")
+    }
+    const thumbnailPath = req.files?.thumbnail[0].path
+    const videoPath = req.files?.video[0].path
+
+    console.log(thumbnailPath)
+    console.log(videoPath)
 
     if(!thumbnailPath){
         throw new ApiError(404,"Thumbnail required")
@@ -58,6 +66,7 @@ const publishVideo = asyncHandler(async(req,res)=>{
     const thumbnail = await uploadOnCloudinary(thumbnailPath)
     const video = await uploadOnCloudinary(videoPath)
 
+    
     if(!thumbnail){
         throw new ApiError(404,"Thumbnail not found")
     }
@@ -65,17 +74,24 @@ const publishVideo = asyncHandler(async(req,res)=>{
     if(!video){
         throw new ApiError(404,"Video file not found")
     }
-    await Video.create({
-        videoFile: video.url,
-        thumbnail: thumbnail.url,
+    console.log(video.public_id)
+    const uploadedVideo = await Video.create({
+        videoFile: {
+            public_id: video?.public_id,
+            url: video?.url
+        },
+        thumbnail: {
+            public_id: video?.public_id,
+            url: thumbnail.url
+        },
         title,
-        duration: 0,
+        duration: video?.duration,
         description: description || "No Description for the video",
         owner: req.user._id,
         views: 0,
         isPublished: true
     })
-    return res.status(200).json(new ApiResponse(200,))
+    return res.status(200).json(new ApiResponse(200,uploadedVideo,"Video uploaded successfully"))
 })
 
 const updatevideo = asyncHandler(async (req,res)=>{
@@ -107,8 +123,48 @@ const updatevideo = asyncHandler(async (req,res)=>{
     return res.status(200).json(new ApiResponse(200,updatedVideo,"Video Updated Successfully"))
 })
 
+const getVideoById = asyncHandler(async (req, res) => {
+    const { videoId } = req.params
+    if(!isValidObjectId(videoId)){
+        throw new ApiError("Video Id not valid")
+    }
+
+    const video = await Video.findById({_id:videoId})
+    if(!video){
+        throw new ApiError("Video not found")
+    }
+
+    return res.status(200).json(new ApiResponse(
+        200,video,"Video Fetched Successfully"
+    ))
+})
+
+const deleteVideo = asyncHandler(async (req, res) => {
+    const { videoId } = req.params
+    const video = await Video.findById({_id: videoId})
+
+    if(!video){
+        throw new ApiError(404,"Video not found")
+    }
+    if(req.user._id == video?.owner){
+        throw new ApiError(404,"Unauthorized access to delete the video. Only owner of video can do so")
+    }
+
+    const videoPublicId = video.videoFile.public_id
+    const thumbnailPublicId = video.thumbnail.public_id
+
+    const deleteResonse = await Video.deleteOne(video)
+    
+    deleteImageFromCloudinary(videoPublicId)
+    deleteImageFromCloudinary(thumbnailPublicId)
+
+    return res.status(200).json(new ApiResponse(200,deleteResonse,"Video deleted Successfully"))
+})
+
 export {
     getAllVideos,
     publishVideo,
-    updatevideo
+    updatevideo,
+    getVideoById,
+    deleteVideo
 }
