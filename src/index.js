@@ -12,7 +12,7 @@ dotenv.config({
 connectDB()
 .then(()=>{
     app.on("error",(error)=>{
-        console.log("ERROR: ",err)
+        console.log("ERROR AFTER DATABASE CONNECTION: ",error)
         throw error
     })
     app.listen(process.env.PORT || 8000 , ()=>{
