@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { createTweet,
-     getUserTweets 
+     deleteTweet,
+     getUserTweets, 
+     updateTweet
     }
  from "../controllers/tweet.controller.js"
 
@@ -11,6 +13,8 @@ const router = Router()
 //secured routes
 router.route('/create').post(verifyJWT,createTweet)
 router.route('/getAll/:userId').get(verifyJWT,getUserTweets)
+router.route('/update/:tweetId').patch(verifyJWT,updateTweet)
+router.route('/delete/:tweetId').delete(verifyJWT,deleteTweet)
 
 export default router;
 

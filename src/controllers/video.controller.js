@@ -3,11 +3,18 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { Video } from "../models/video.model.js";
+import { User } from "../models/user.model.js";
 import { deleteImageFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 
 
 const getAllVideos = asyncHandler(async (req,res)=>{
-    const { page = 1 , limit = 1, query, sortBy , sortType = 'ascending' , userId} = req.query
+    const { page = 1 , limit = 2, query = "", sortBy="title" , sortType = 'ascending' , userId} = req.query
+    if(query == ""){
+        console.log(userId)
+        const videos = await Video.find({owner:userId});
+        return res.status(200).json(new ApiResponse(200,videos,"Videos fetched successfullly"))
+    }
+    else{
     const videos = await Video.aggregate([
         {
             $match: {
@@ -28,11 +35,12 @@ const getAllVideos = asyncHandler(async (req,res)=>{
             $limit: parseInt(limit)   
         }
     ])
-
+    console.log(videos)
     if(!videos){
         throw new ApiError(404,"No videos Found")
     }
     return res.status(200).json(new ApiResponse(200,{videos,length: videos.length,nextPage:parseInt(page)+1},"Videos fetched successfully"))
+}
 })
 
 const publishVideo = asyncHandler(async(req,res)=>{
@@ -41,7 +49,6 @@ const publishVideo = asyncHandler(async(req,res)=>{
     if(!title){
         throw new ApiError(404,"Title not found")
     }
-    console.log(req.files)
     if(!req.files || !(Array.isArray(req.files.thumbnail)) || req.files.thumbnail.length <= 0){
         throw new ApiError(411,"Missing thumbnail file")
     }
@@ -51,8 +58,6 @@ const publishVideo = asyncHandler(async(req,res)=>{
     const thumbnailPath = req.files?.thumbnail[0].path
     const videoPath = req.files?.video[0].path
 
-    console.log(thumbnailPath)
-    console.log(videoPath)
 
     if(!thumbnailPath){
         throw new ApiError(404,"Thumbnail required")
@@ -74,7 +79,6 @@ const publishVideo = asyncHandler(async(req,res)=>{
     if(!video){
         throw new ApiError(404,"Video file not found")
     }
-    console.log(video.public_id)
     const uploadedVideo = await Video.create({
         videoFile: {
             public_id: video?.public_id,
@@ -146,7 +150,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
     if(!video){
         throw new ApiError(404,"Video not found")
     }
-    if(req.user._id == video?.owner){
+    if(!(video?.owner?.equals(req.user?._id))){
         throw new ApiError(404,"Unauthorized access to delete the video. Only owner of video can do so")
     }
 
