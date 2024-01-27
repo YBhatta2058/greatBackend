@@ -83,10 +83,52 @@ const deleteTweet = asyncHandler(async (req,res)=>{
     return res.status(200).json(new ApiResponse(200,deleteResponse,"Tweet Deleted Successfully"))
 })
 
+const getTweetOwnerDetails = asyncHandler(async (req,res)=>{
+    const { tweetId } =  req.params 
+    const tweetOwner = await Tweet.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(tweetId)
+            }
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                as: "ownerDetails",
+                pipeline: [
+                    {    
+                            $project:{
+                                username: 1,
+                                fullName: 1,
+                                email: 1
+                            }
+                    }
+                ]
+            }
+        },
+        {
+            $addFields: {
+                ownerDetails: {
+                    $first: "$ownerDetails"
+                }
+            }
+        },
+        
+    ])
+    console.log(tweetOwner)
+    if(!tweetOwner){
+        throw new ApiError(404,"Owner details not found")
+    }
+    return res.status(200).json(new ApiResponse(200,tweetOwner,"Tweet Owner details fetched successfully"))
+})
+
 export {
     createTweet,
     getUserTweets,
     getTweetById,
     deleteTweet,
-    updateTweet
+    updateTweet,
+    getTweetOwnerDetails
 }

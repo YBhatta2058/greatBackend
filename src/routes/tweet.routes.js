@@ -2,6 +2,7 @@ import { Router } from "express";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { createTweet,
      deleteTweet,
+     getTweetOwnerDetails,
      getUserTweets, 
      updateTweet
     }
@@ -15,6 +16,7 @@ router.route('/create').post(verifyJWT,createTweet)
 router.route('/getAll/:userId').get(verifyJWT,getUserTweets)
 router.route('/update/:tweetId').patch(verifyJWT,updateTweet)
 router.route('/delete/:tweetId').delete(verifyJWT,deleteTweet)
+router.route('/owner/:tweetId').get(getTweetOwnerDetails)
 
 export default router;
 
