@@ -1,16 +1,15 @@
-import mongoose, { isValidObjectId, trusted } from "mongoose";
+import mongoose, { isValidObjectId } from "mongoose";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { Video } from "../models/video.model.js";
-import { User } from "../models/user.model.js";
 import { deleteImageFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
+import { Like } from "../models/likes.model.js";
 
 
 const getAllVideos = asyncHandler(async (req,res)=>{
     const { page = 1 , limit = 2, query = "", sortBy="title" , sortType = 'ascending' , userId} = req.query
     if(query == ""){
-        console.log(userId)
         const videos = await Video.find({owner:userId});
         return res.status(200).json(new ApiResponse(200,videos,"Videos fetched successfullly"))
     }
@@ -35,7 +34,6 @@ const getAllVideos = asyncHandler(async (req,res)=>{
             $limit: parseInt(limit)   
         }
     ])
-    console.log(videos)
     if(!videos){
         throw new ApiError(404,"No videos Found")
     }
@@ -175,6 +173,17 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
             isPublished: false
         }
     })
+})
+
+const getLikes = asyncHandler(async (req,res)=>{
+    const { videoId } = req.params;
+
+    if(!isValidObjectId(videoId)){
+        throw new ApiError(404,"Video Id not valid")
+    }
+
+    const likers = await Like.find({video: mongoose.Types.ObjectId(videoId)})
+    return res.status(200).json()
 })
 
 export {

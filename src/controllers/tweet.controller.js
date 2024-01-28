@@ -3,7 +3,6 @@ import { asyncHandler } from '../utils/asyncHandler.js'
 import { ApiError } from '../utils/ApiError.js'
 import { ApiResponse } from '../utils/ApiResponse.js'
 import { isValidObjectId } from 'mongoose';
-import { User } from '../models/user.model.js'
 import mongoose from 'mongoose';
 
 const createTweet = asyncHandler(async (req,res)=>{
@@ -98,12 +97,12 @@ const getTweetOwnerDetails = asyncHandler(async (req,res)=>{
                 foreignField: "_id",
                 as: "ownerDetails",
                 pipeline: [
-                    {    
-                            $project:{
-                                username: 1,
-                                fullName: 1,
-                                email: 1
-                            }
+                    {
+                        $project: {
+                            fullName: 1,
+                            username: 1,
+                            email: 1
+                        }
                     }
                 ]
             }
@@ -114,8 +113,7 @@ const getTweetOwnerDetails = asyncHandler(async (req,res)=>{
                     $first: "$ownerDetails"
                 }
             }
-        },
-        
+        }
     ])
     console.log(tweetOwner)
     if(!tweetOwner){
